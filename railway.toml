@@ -1,9 +1,10 @@
 [build]
 builder = "dockerfile"
-
+dockerfilePath = "Dockerfile"
+ 
 [deploy]
-startCommand = "python3 main.py"
 healthcheckPath = "/cdn-check"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+ 
