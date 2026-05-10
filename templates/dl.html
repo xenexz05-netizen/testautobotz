@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Downloading {{ file_name }}...</title>
+    <meta http-equiv="refresh" content="0; url={{ download_url }}">
+    <style>
+        :root { --neon: #00ff41; }
+        body { background: #000; color: #c8ffc8; font-family: system-ui, sans-serif;
+               display: flex; align-items: center; justify-content: center; height: 100vh; }
+        body::before {
+            content: '';
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px,
+                rgba(0,255,65,0.018) 2px, rgba(0,255,65,0.018) 4px);
+        }
+        .box { text-align: center; position: relative; z-index: 1; }
+        .spinner { width: 44px; height: 44px; border: 2px solid #001a00;
+                   border-top-color: var(--neon); border-radius: 50%; animation: spin 0.7s linear infinite;
+                   margin: 0 auto 18px; box-shadow: 0 0 16px #00ff4166; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        a { color: var(--neon); text-shadow: 0 0 8px #00ff41; }
+        strong { color: #ffffff; }
+        .brand { margin-top: 24px; font-size: 0.75rem; color: #4a8f4a; }
+        .brand span { color: var(--neon); }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="spinner"></div>
+        <p>Starting download for <strong>{{ file_name }}</strong>…</p>
+        <p style="margin-top:8px;font-size:0.85rem;color:#4a8f4a;">
+            If it doesn't start, <a href="{{ download_url }}">click here</a>.
+        </p>
+        <p class="brand">Powered by <span>PrimeAutoBotz</span></p>
+    </div>
+</body>
+</html>

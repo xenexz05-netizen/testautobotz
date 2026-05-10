@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ file_name }} — PrimeAutoBotz</title>
+
+    <link rel="preconnect" href="{{ base_url }}">
+    <link rel="dns-prefetch" href="{{ base_url }}">
+
+    <!-- Preload the actual media bytes so the browser starts buffering immediately -->
+    {% if is_video or is_audio %}
+    <link rel="preload" href="{{ stream_url }}" as="fetch" crossorigin="anonymous">
+    {% endif %}
+
+    <meta http-equiv="Cache-Control" content="public, max-age=300">
+    <meta property="og:title" content="{{ file_name }} — PrimeAutoBotz">
+    <meta property="og:description" content="Stream or download {{ file_name }} ({{ file_size }}) via PrimeAutoBotz">
+    <meta property="og:type" content="{% if is_video %}video.other{% else %}website{% endif %}">
+    <meta property="og:url" content="{{ watch_url }}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ file_name }} — PrimeAutoBotz">
+
+    <style>
+        :root {
+            --neon: #00ff41;
+            --neon-dim: #00cc33;
+            --neon-pale: #00ff4133;
+            --neon-glow-sm: 0 0 6px #00ff41, 0 0 14px #00ff4166;
+            --neon-glow: 0 0 10px #00ff41, 0 0 24px #00ff4188, 0 0 48px #00ff4133;
+            --neon-glow-xl: 0 0 16px #00ff41, 0 0 40px #00ff4199, 0 0 80px #00ff4144;
+            --blue: #00aaff;
+            --blue-glow: 0 0 10px #00aaff88;
+            --red: #ff2255;
+            --red-glow: 0 0 10px #ff225588;
+            --bg: #000000;
+            --bg2: #040f04;
+            --bg3: #071407;
+            --bg4: #0a1e0a;
+            --border: #00ff411a;
+            --border-bright: #00ff4144;
+            --text: #c8ffc8;
+            --text-dim: #4a8f4a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Matrix-style scanlines overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,255,65,0.018) 2px,
+                rgba(0,255,65,0.018) 4px
+            );
+            z-index: 0;
+        }
+
+        /* Animated neon border on top */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon), transparent);
+            box-shadow: var(--neon-glow);
+            animation: topbar 3s ease-in-out infinite alternate;
+            z-index: 100;
+        }
+        @keyframes topbar {
+            0%   { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        header {
+            padding: 14px 24px;
+            border-bottom: 1px solid var(--border-bright);
+            background: linear-gradient(180deg, #001a00 0%, transparent 100%);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .logo-prime { color: var(--red); text-shadow: var(--red-glow); }
+        .logo-auto  { color: #ffffff; }
+        .logo-botz  { color: var(--blue); text-shadow: var(--blue-glow); }
+
+        .open-bot-header-btn {
+            margin-left: auto;
+            background: transparent;
+            color: var(--neon);
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 7px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            border: 1px solid var(--neon);
+            box-shadow: var(--neon-glow-sm);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+        }
+        .open-bot-header-btn:hover {
+            background: var(--neon);
+            color: #000;
+            box-shadow: var(--neon-glow-xl);
+        }
+
+        main {
+            flex: 1;
+            max-width: 860px;
+            width: 100%;
+            margin: 28px auto;
+            padding: 0 16px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* ── Announcement banner — shown BELOW the file card ── */
+        #announce-banner {
+            display: none;
+            width: 100%;
+            margin-bottom: 22px;
+            background: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-left: 3px solid var(--neon);
+            border-radius: 10px;
+            padding: 14px 18px;
+            color: #e0ffe0;
+            font-size: 0.88rem;
+            line-height: 1.6;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,255,65,0.08), inset 0 0 30px rgba(0,255,65,0.03);
+        }
+        #announce-banner.visible { display: block; }
+        #announce-banner img {
+            max-width: 100%;
+            border-radius: 8px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        #announce-banner a { color: var(--neon); text-decoration: underline; }
+        #announce-banner p { margin: 0; }
+        .announce-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: var(--neon);
+            text-shadow: var(--neon-glow-sm);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .file-card {
+            background: var(--bg2);
+            border: 1px solid var(--border-bright);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 20px rgba(0,255,65,0.04);
+        }
+
+        .file-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: var(--bg3);
+            border: 1px solid var(--border-bright);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 10px rgba(0,255,65,0.06);
+        }
+
+        .file-meta { flex: 1; overflow: hidden; }
+        .file-name {
+            font-size: 0.98rem;
+            font-weight: 600;
+            color: #e0ffe0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-size {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            margin-top: 3px;
+        }
+        .file-type-badge {
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            padding: 3px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--neon);
+            color: var(--neon);
+            text-shadow: var(--neon-glow-sm);
+            white-space: nowrap;
+            box-shadow: var(--neon-glow-sm);
+        }
+
+        .media-container {
+            background: #000;
+            border: 1px solid var(--border-bright);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 22px;
+            box-shadow: 0 0 30px rgba(0,255,65,0.08), 0 8px 40px rgba(0,0,0,0.6);
+        }
+
+        video, audio {
+            width: 100%;
+            display: block;
+            outline: none;
+        }
+        video { max-height: 480px; background: #000; }
+        audio { padding: 12px; background: var(--bg2); }
+
+        .image-container {
+            background: var(--bg2);
+            border: 1px solid var(--border-bright);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 22px;
+            text-align: center;
+            padding: 12px;
+        }
+        .image-container img { max-width: 100%; border-radius: 6px; }
+
+        .doc-placeholder {
+            background: var(--bg2);
+            border: 1px solid var(--border-bright);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 22px;
+        }
+        .doc-placeholder .doc-icon { font-size: 3.5rem; margin-bottom: 12px; }
+        .doc-placeholder p { color: var(--text-dim); font-size: 0.9rem; }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.18s ease;
+            letter-spacing: 0.03em;
+        }
+
+        .btn-primary {
+            background: transparent;
+            color: var(--neon);
+            border: 2px solid var(--neon);
+            box-shadow: var(--neon-glow-sm), inset 0 0 20px rgba(0,255,65,0.06);
+        }
+        .btn-primary:hover {
+            background: var(--neon);
+            color: #000;
+            box-shadow: var(--neon-glow-xl);
+        }
+
+        .btn-secondary {
+            background: var(--bg3);
+            color: var(--text);
+            border: 1px solid var(--border-bright);
+        }
+        .btn-secondary:hover {
+            border-color: var(--neon);
+            color: var(--neon);
+            box-shadow: var(--neon-glow-sm);
+        }
+
+        .btn-tg {
+            background: transparent;
+            color: var(--blue);
+            border: 1px solid var(--blue);
+            box-shadow: var(--blue-glow);
+        }
+        .btn-tg:hover {
+            background: var(--blue);
+            color: #fff;
+            box-shadow: 0 0 20px #00aaff99, 0 0 40px #00aaff44;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .info-cell {
+            background: var(--bg2);
+            border: 1px solid var(--border-bright);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+        .info-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .info-value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--neon);
+            text-shadow: var(--neon-glow-sm);
+        }
+
+        footer {
+            border-top: 1px solid var(--border-bright);
+            padding: 14px 24px;
+            text-align: center;
+            font-size: 0.76rem;
+            color: var(--text-dim);
+            position: relative;
+            z-index: 10;
+        }
+        footer a { text-decoration: none; }
+        .footer-prime { color: var(--red); text-shadow: var(--red-glow); }
+        .footer-auto  { color: #ffffff; }
+        .footer-botz  { color: var(--blue); text-shadow: var(--blue-glow); }
+        .footer-tak   { color: #ffffff; }
+        .footer-ezo   { color: var(--neon); text-shadow: var(--neon-glow-sm); }
+
+        /* Neon divider dots */
+        .dot { color: var(--neon); margin: 0 6px; opacity: 0.5; }
+
+        @media (max-width: 560px) {
+            main { margin: 16px auto; }
+            .file-card { padding: 12px 14px; }
+            .btn { min-width: 100%; }
+            .logo { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-prime">Prime</span><span class="logo-auto">Auto</span><span class="logo-botz">Botz</span>
+        </div>
+        <a href="https://t.me/filetolink_05bot" target="_blank" class="open-bot-header-btn">
+            ⚡ Open Bot
+        </a>
+    </header>
+
+    <main>
+        <!-- File info card -->
+        <div class="file-card">
+            <div class="file-icon">
+                {% if is_video %}🎬{% elif is_audio %}🎵{% elif is_image %}🖼️{% else %}📄{% endif %}
+            </div>
+            <div class="file-meta">
+                <div class="file-name">{{ file_name }}</div>
+                <div class="file-size">{{ file_size }}</div>
+            </div>
+            <div class="file-type-badge">
+                {% if is_video %}VIDEO{% elif is_audio %}AUDIO{% elif is_image %}IMAGE{% else %}FILE{% endif %}
+            </div>
+        </div>
+
+        <!-- ▶ Announcement banner appears HERE (below file card, above player) -->
+        <div id="announce-banner">
+            <div class="announce-label">📌 Announcement</div>
+            <div id="announce-content"></div>
+        </div>
+
+        <!-- Media player -->
+        {% if is_video %}
+        <div class="media-container">
+            <video id="mainvideo" controls preload="metadata" playsinline>
+                <source src="{{ stream_url }}" type="{{ mime_type }}">
+                Your browser does not support video playback.
+            </video>
+        </div>
+        {% elif is_audio %}
+        <div class="media-container">
+            <audio controls preload="metadata">
+                <source src="{{ stream_url }}" type="{{ mime_type }}">
+                Your browser does not support audio playback.
+            </audio>
+        </div>
+        {% elif is_image %}
+        <div class="image-container">
+            <img src="{{ stream_url }}" alt="{{ file_name }}" loading="lazy">
+        </div>
+        {% else %}
+        <div class="doc-placeholder">
+            <div class="doc-icon">📄</div>
+            <p>This file cannot be previewed in the browser.<br>Use the Download button below.</p>
+        </div>
+        {% endif %}
+
+        <!-- Action buttons -->
+        <div class="actions">
+            <a href="{{ stream_url }}" class="btn btn-primary" target="_blank">
+                🎬 Stream Now
+            </a>
+            <a href="{{ stream_url }}?download=1" class="btn btn-secondary" download="{{ file_name }}">
+                ⬇️ Download
+            </a>
+            <a href="https://t.me/filetolink_05bot" class="btn btn-tg" target="_blank">
+                ✈️ Open Bot
+            </a>
+        </div>
+
+        <!-- File info grid -->
+        <div class="info-grid">
+            <div class="info-cell">
+                <div class="info-label">File Name</div>
+                <div class="info-value" style="font-size:0.78rem;color:#c8ffc8;text-shadow:none;word-break:break-all;">{{ file_name }}</div>
+            </div>
+            <div class="info-cell">
+                <div class="info-label">File Size</div>
+                <div class="info-value">{{ file_size }}</div>
+            </div>
+            <div class="info-cell">
+                <div class="info-label">Type</div>
+                <div class="info-value" style="font-size:0.78rem;">{{ mime_type }}</div>
+            </div>
+            <div class="info-cell">
+                <div class="info-label">Range Streaming</div>
+                <div class="info-value">✓ Enabled</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        Powered by
+        <a href="https://t.me/PrimeAutoBotz" target="_blank">
+            <span class="footer-prime">Prime</span><span class="footer-auto">Auto</span><span class="footer-botz">Botz</span>
+        </a>
+        <span class="dot">·</span>
+        <a href="https://t.me/takezo_5" target="_blank">
+            <span class="footer-tak">tak</span><span class="footer-ezo">ezo_5</span>
+        </a>
+        <span class="dot">·</span>
+        <a href="https://t.me/filetolink_05bot" target="_blank" style="color:var(--text-dim);">Open Bot</a>
+    </footer>
+
+    <script>
+        // ── Announcement banner ──────────────────────────────────────────
+        fetch('/api/pushinfo')
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.content) {
+                    document.getElementById('announce-content').innerHTML = data.content || '';
+                    document.getElementById('announce-banner').classList.add('visible');
+                }
+            })
+            .catch(() => {});
+
+        // ── Speed-boost: pre-warm the stream before the user hits play ───
+        // 1. Immediately fetch the first 4 MB chunk (matches server chunk size)
+        //    This primes the TCP connection and fills the browser buffer so
+        //    playback starts with zero stall on click.
+        // 2. HEAD request on the raw URL tells the browser about file size
+        //    early so the seek bar shows up correctly.
+        (function() {
+            var streamUrl = '{{ stream_url }}';
+            // Prime the connection with a HEAD first (cheap, no bandwidth)
+            fetch(streamUrl, { method: 'HEAD', cache: 'no-store' }).catch(function(){});
+
+            {% if is_video or is_audio %}
+            // Prefetch first 4 MB (first chunk) so playback starts instantly
+            // We do this in the background; the browser queues it.
+            fetch(streamUrl, {
+                headers: { 'Range': 'bytes=0-4194303' },  // 4 MB = 4*1024*1024 - 1
+                cache: 'force-cache',
+                priority: 'high',
+            }).catch(function(){});
+
+            // Also warm the DNS + TCP connection to our origin
+            var link = document.createElement('link');
+            link.rel = 'preconnect';
+            link.href = window.location.origin;
+            document.head.appendChild(link);
+
+            // Auto-play hint: set currentTime=0 so browser issues first range
+            // request on DOMContentLoaded instead of waiting for user click
+            var media = document.querySelector('video, audio');
+            if (media) {
+                media.addEventListener('loadedmetadata', function() {
+                    // Media is ready — nothing to do; fast path already primed
+                }, { once: true });
+                // Force browser to start loading media bytes now
+                media.load();
+            }
+            {% endif %}
+        })();
+    </script>
+</body>
+</html>

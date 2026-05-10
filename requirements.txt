@@ -1,0 +1,10 @@
+pyrofork==2.3.48
+TgCrypto
+asyncpg
+aiohttp
+uvloop==0.21.0
+python-dotenv
+psutil
+Jinja2
+aiofiles
+dnspython
